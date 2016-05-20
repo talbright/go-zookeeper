@@ -11,6 +11,47 @@ import (
 	"time"
 )
 
+type nullTestLogger struct{}
+
+func (nullTestLogger) Printf(format string, a ...interface{}) {}
+
+func TestConnWithLogger(t *testing.T) {
+	ts, err := StartTestCluster(1, nil, logWriter{t: t, p: "[ZKERR] "})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Stop()
+	port := ts.Servers[0].Port
+	server := fmt.Sprintf("127.0.0.1:%d", port)
+	nullLogger := nullTestLogger{}
+	zk, _, err := Connect([]string{server}, time.Second*15, WithLogger(nullLogger))
+	if err != nil {
+		t.Fatalf("Connect returned error: %+v", err)
+	}
+	defer zk.Close()
+	if zk.logger != nullLogger {
+		t.Fatal("logger was not set")
+	}
+}
+
+func TestConnWithConnectTimeout(t *testing.T) {
+	ts, err := StartTestCluster(1, nil, logWriter{t: t, p: "[ZKERR] "})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Stop()
+	port := ts.Servers[0].Port
+	server := fmt.Sprintf("127.0.0.1:%d", port)
+	zk, _, err := Connect([]string{server}, time.Second*15, WithConnectTimeout(20*time.Second))
+	if err != nil {
+		t.Fatalf("Connect returned error: %+v", err)
+	}
+	defer zk.Close()
+	if zk.connectTimeout != 20*time.Second {
+		t.Fatal("timeout was not set")
+	}
+}
+
 func TestCreate(t *testing.T) {
 	ts, err := StartTestCluster(1, nil, logWriter{t: t, p: "[ZKERR] "})
 	if err != nil {
