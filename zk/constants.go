@@ -239,3 +239,10 @@ var (
 		ModeStandalone: "standalone",
 	}
 )
+
+// NoData is a shortcut for passing empty data to various Conn methods.
+var NoData = []byte{0}
+
+// WorldACLPermAll is a shortcut for passing acl permissions to various
+// Conn methods.
+var WorldACLPermAll = WorldACL(PermAll)

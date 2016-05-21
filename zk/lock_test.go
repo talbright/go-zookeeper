@@ -1,6 +1,7 @@
 package zk
 
 import (
+	"regexp"
 	"testing"
 	"time"
 )
@@ -20,7 +21,7 @@ func TestLock(t *testing.T) {
 	acls := WorldACL(PermAll)
 
 	l := NewLock(zk, "/test", acls)
-	if _, err := l.Lock([]byte{}); err != nil {
+	if err := l.Lock(); err != nil {
 		t.Fatal(err)
 	}
 	if err := l.Unlock(); err != nil {
@@ -29,13 +30,13 @@ func TestLock(t *testing.T) {
 
 	val := make(chan int, 3)
 
-	if _, err := l.Lock([]byte{}); err != nil {
+	if err := l.Lock(); err != nil {
 		t.Fatal(err)
 	}
 
 	l2 := NewLock(zk, "/test", acls)
 	go func() {
-		if _, err := l2.Lock([]byte{}); err != nil {
+		if err := l2.Lock(); err != nil {
 			t.Fatal(err)
 		}
 		val <- 2
@@ -85,10 +86,53 @@ func TestMultiLevelLock(t *testing.T) {
 	l := NewLock(zk, "/test-multi-level/lock", acls)
 	defer zk.Delete("/test-multi-level", -1) // Clean up what we've created for this test
 	defer zk.Delete("/test-multi-level/lock", -1)
-	if _, err := l.Lock([]byte{}); err != nil {
+	if err := l.Lock(); err != nil {
 		t.Fatal(err)
 	}
 	if err := l.Unlock(); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestLockWithData(t *testing.T) {
+	ts, err := StartTestCluster(1, nil, logWriter{t: t, p: "[ZKERR] "})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Stop()
+	zk, _, err := ts.ConnectAll()
+	if err != nil {
+		t.Fatalf("Connect returned error: %+v", err)
+	}
+	defer zk.Close()
+	path := "/test-with-data-lock/lock"
+	nodeData := []byte("hello zk")
+	l := NewLock(zk, path, WorldACLPermAll)
+	var lockPath string
+
+	if lockPath, err = l.LockWithData(nodeData); err != nil {
+		t.Fatal(err)
+	}
+
+	var validLockPath = regexp.MustCompile(`.*/_c_.*?-lock-0{10}$`)
+	if yes := validLockPath.MatchString(lockPath); !yes {
+		t.Fatalf("lock path was incorrect")
+	}
+
+	if yes, _, err := zk.Exists(lockPath); !yes || err != nil {
+		if err != nil {
+			t.Fatal(err)
+		} else {
+			t.Fatalf("lock was not created")
+		}
+	}
+
+	if data, _, err := zk.Get(lockPath); err != nil || string(data) != "hello zk" {
+		if err != nil {
+			t.Fatal(err)
+		} else {
+			t.Fatalf("lock data was not set")
+		}
+	}
+
 }
