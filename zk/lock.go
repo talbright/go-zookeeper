@@ -39,10 +39,18 @@ func parseSeq(path string) (int, error) {
 	return strconv.Atoi(parts[len(parts)-1])
 }
 
-// Lock attempts to acquire the lock. It will wait to return until the lock
+// Lock attempts to acquire a lock. It will wait to return until the lock
 // is acquired or an error occurs. If this instance already has the lock
 // then ErrDeadlock is returned.
-func (l *Lock) Lock(data []byte) (string, error) {
+func (l *Lock) Lock() error {
+	_, err := l.LockWithData([]byte{})
+	return err
+}
+
+// LockWithData performs a lock in the same manner as the Lock method, but
+// in addition allows you to pass in data to be set on the locked node, and
+// will return the path to the node that acquired the lock.
+func (l *Lock) LockWithData(data []byte) (string, error) {
 	if l.lockPath != "" {
 		return "", ErrDeadlock
 	}
