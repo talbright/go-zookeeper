@@ -78,7 +78,6 @@ func znodeBasicExample(conn *zk.Conn) {
 	logger.Print("basic znode example")
 	var path string
 	var err error
-	var getData []byte
 
 	logger.Printf("creating node /myznode")
 	if path, err = conn.Create("/myznode", []byte{}, zk.FlagPersistent, zk.WorldACL(zk.PermAll)); err != nil {
@@ -91,16 +90,16 @@ func znodeBasicExample(conn *zk.Conn) {
 	}
 
 	logger.Printf("setting node %s data\n", path)
-	var data = []byte("hello")
-	if _, err = conn.Set(path, data, -1); err != nil {
+	if _, err = conn.Set(path, []byte("hello"), -1); err != nil {
 		panic(err)
 	}
 
 	logger.Printf("getting node %s data\n", path)
-	if getData, _, err = conn.Get(path); err != nil {
+	if data, _, err := conn.Get(path); err != nil || string(data) != "hello" {
 		panic(err)
+	} else {
+		logger.Printf("node data: %v", string(data))
 	}
-	logger.Printf("node data: %v", string(getData))
 
 	logger.Printf("deleting node %s\n", path)
 	if err = conn.Delete(path, -1); err != nil {
