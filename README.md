@@ -47,7 +47,7 @@ See the apache [zookeeper](https://zookeeper.apache.org/doc/trunk/zookeeperOver.
 
 #### Znode API
 
-The following operation on Znodes are available:
+The following are fundamental operations on Znodes:
 * Create
 * Get
 * Set
@@ -56,7 +56,7 @@ The following operation on Znodes are available:
 * Children
 * Sync
 
-See the [go-zookeper](http://godoc.org/github.com/talbright/go-zookeeper/zk) project docs for more details, or run the [tour.go](examples/tour.go).
+Additional operations are available, see the [go-zookeper](http://godoc.org/github.com/talbright/go-zookeeper/zk) project docs for more details, or run the [tour.go](examples/tour.go).
 
 #### Znode API example
 
