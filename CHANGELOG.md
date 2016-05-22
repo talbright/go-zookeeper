@@ -1,10 +1,9 @@
 # Change Log
 
-## [Unreleased](https://github.com/talbright/go-zookeeper/tree/HEAD)
+## [v0.1.0](https://github.com/talbright/go-zookeeper/tree/v0.1.0) (2016-05-22)
 
 [Full Changelog](https://github.com/talbright/go-zookeeper/compare/v0.1.0...HEAD)
 
-## [v0.1.0](https://github.com/talbright/go-zookeeper/tree/v0.1.0) (2016-05-22)
 **Merged pull requests:**
 
 This is the first release of my fork of go-zookeeper. 
