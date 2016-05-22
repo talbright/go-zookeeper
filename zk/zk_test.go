@@ -11,6 +11,19 @@ import (
 	"time"
 )
 
+func isChannelClosed(chn <-chan Event) bool {
+	for {
+		select {
+		case <-time.After(2 * time.Second):
+			return false
+		case _, open := <-chn:
+			if !open {
+				return true
+			}
+		}
+	}
+}
+
 type nullTestLogger struct{}
 
 func (nullTestLogger) Printf(format string, a ...interface{}) {}
@@ -514,46 +527,77 @@ func TestCancelWatch(t *testing.T) {
 		t.Fatal("Children should return at least 1 child")
 	}
 
-	zk.CancelWatch(childCh1)
-	if path, err := zk.Create("/gozk-test", []byte{1, 2, 3, 4}, 0, WorldACL(PermAll)); err != nil {
+	/*
+		Cancel two watches. The third watch should still exist.
+	*/
+	if err := zk.CancelWatch(childCh1); err != nil {
+		t.Fatalf("Cancel watch returned error: %+v", err)
+	}
+
+	if closed := isChannelClosed(childCh1); !closed {
+		t.Fatalf("Child channel 1 expected to be closed")
+	}
+
+	if err := zk.CancelWatch(childCh2); err != nil {
+		t.Fatalf("Cancel watch returned error: %+v", err)
+	}
+
+	if closed := isChannelClosed(childCh2); !closed {
+		t.Fatalf("Child channel 2 expected to be closed")
+	}
+
+	if closed := isChannelClosed(childCh3); closed {
+		t.Fatalf("Child channel 3 expected to be open")
+	}
+
+	if err := zk.CancelWatch(childCh2); err != ErrWatchNotFound {
+		t.Fatalf("Cancel should not have found channel 2")
+	}
+
+	/*
+		When an event is created that triggers a watch, that watch event is
+		received for all watches, and then all watches (of the same type and path)
+		are immediately removed and their respective channels closed.
+
+	*/
+	if _, err := zk.Create("/gozk-test", []byte{1, 2, 3, 4}, 0, WorldACL(PermAll)); err != nil {
 		t.Fatalf("Create returned error: %+v", err)
-	} else if path != "/gozk-test" {
-		t.Fatalf("Create returned different path '%s' != '/gozk-test'", path)
-	}
-	zk.CancelWatch(childCh2)
-
-	select {
-	case _, ok := <-childCh1:
-		if ok {
-			t.Fatalf("Child channel 1 expected to be closed")
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("Child watcher timed out")
 	}
 
-	select {
-	case _, ok := <-childCh2:
-		if ok {
-			t.Fatalf("Child channel 2 expected to be closed")
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("Child watcher timed out")
+	if closed := isChannelClosed(childCh3); !closed {
+		t.Fatalf("Child channel 3 expected to be closed")
 	}
 
-	select {
-	case ev, ok := <-childCh3:
-		if !ok {
-			t.Fatalf("Child channel 3 NOT expected to be closed")
-		}
-		if ev.Err != nil {
-			t.Fatalf("Child watcher error %+v", ev.Err)
-		}
-		if ev.Path != "/" {
-			t.Fatalf("Child watcher wrong path %s instead of %s", ev.Path, "/")
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("Child watcher timed out")
+	/*
+		Check to see that a watch that was invalidated by an event isn't picked
+		up by CancelWatch.
+	*/
+	if err := zk.CancelWatch(childCh3); err != ErrWatchNotFound {
+		t.Fatalf("Cancel should not have found channel 3")
 	}
+
+	/*
+		Create a fourth watch, cancel it, generate a watch event. There should be
+		no adverse side affects (canceled watches don't get removed from the server)
+	*/
+	children, stat, childCh4, err := zk.ChildrenW("/")
+	if err != nil {
+		t.Fatalf("Children returned error: %+v", err)
+	} else if stat == nil {
+		t.Fatal("Children returned nil stat")
+	} else if len(children) < 1 {
+		t.Fatal("Children should return at least 1 child")
+	}
+	if err := zk.CancelWatch(childCh4); err != nil {
+		t.Fatalf("Cancel watch returned error: %+v", err)
+	}
+	if closed := isChannelClosed(childCh4); !closed {
+		t.Fatalf("Child channel 4 expected to be closed")
+	}
+	if _, err := zk.Create("/gozk-test2", []byte{1, 2, 3, 4}, 0, WorldACL(PermAll)); err != nil {
+		t.Fatalf("Create returned error: %+v", err)
+	}
+
 }
 
 func TestRequestFail(t *testing.T) {
