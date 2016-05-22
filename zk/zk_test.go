@@ -471,7 +471,7 @@ func TestExpiringWatch(t *testing.T) {
 	}
 }
 
-func TestCancelEvent(t *testing.T) {
+func TestCancelWatch(t *testing.T) {
 	ts, err := StartTestCluster(1, nil, logWriter{t: t, p: "[ZKERR] "})
 	if err != nil {
 		t.Fatal(err)
@@ -514,13 +514,13 @@ func TestCancelEvent(t *testing.T) {
 		t.Fatal("Children should return at least 1 child")
 	}
 
-	zk.CancelEvent(childCh1)
+	zk.CancelWatch(childCh1)
 	if path, err := zk.Create("/gozk-test", []byte{1, 2, 3, 4}, 0, WorldACL(PermAll)); err != nil {
 		t.Fatalf("Create returned error: %+v", err)
 	} else if path != "/gozk-test" {
 		t.Fatalf("Create returned different path '%s' != '/gozk-test'", path)
 	}
-	zk.CancelEvent(childCh2)
+	zk.CancelWatch(childCh2)
 
 	select {
 	case _, ok := <-childCh1:

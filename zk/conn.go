@@ -862,12 +862,12 @@ func (c *Conn) ExistsW(path string) (bool, *Stat, <-chan Event, error) {
 	return exists, &res.Stat, ech, err
 }
 
-func (c *Conn) CancelEvent(evt <-chan Event) {
+func (c *Conn) CancelWatch(watch <-chan Event) {
 	c.watchersLock.Lock()
 	defer c.watchersLock.Unlock()
 	for pathType, watchers := range c.watchers {
 		for idx, ch := range watchers {
-			if evt == ch {
+			if watch == ch {
 				close(ch)
 				c.watchers[pathType] = append(watchers[:idx], watchers[idx+1:]...)
 				return
@@ -875,7 +875,7 @@ func (c *Conn) CancelEvent(evt <-chan Event) {
 		}
 	}
 	select {
-	case <-evt:
+	case <-watch:
 		// try to drain the channel if event already receieved
 	default:
 	}
