@@ -31,6 +31,9 @@ var ErrNoServer = errors.New("zk: could not connect to a server")
 // an invalid path. (e.g. empty path)
 var ErrInvalidPath = errors.New("zk: invalid path")
 
+// ErrWatchNotFound indicates that the watch was not found.
+var ErrWatchNotFound = errors.New("zk: watch not found")
+
 // DefaultLogger uses the stdlib log package for logging.
 var DefaultLogger Logger = defaultLogger{}
 
@@ -860,6 +863,28 @@ func (c *Conn) ExistsW(path string) (bool, *Stat, <-chan Event, error) {
 		return false, nil, nil, err
 	}
 	return exists, &res.Stat, ech, err
+}
+
+/*
+CancelWatch will safely remove the watch from the connection.  If the watch is
+not found an ErrWatchNotFound will be returned.
+
+*/
+func (c *Conn) CancelWatch(watch <-chan Event) error {
+	//Technical note: the watch is not removed from the server, so we still receive
+	//an event but silently drop it in recvLoop.
+	c.watchersLock.Lock()
+	defer c.watchersLock.Unlock()
+	for pathType, watchers := range c.watchers {
+		for idx, ch := range watchers {
+			if watch == ch {
+				close(ch)
+				c.watchers[pathType] = append(watchers[:idx], watchers[idx+1:]...)
+				return nil
+			}
+		}
+	}
+	return ErrWatchNotFound
 }
 
 func (c *Conn) GetACL(path string) ([]ACL, *Stat, error) {
