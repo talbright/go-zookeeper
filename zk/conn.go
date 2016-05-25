@@ -95,8 +95,8 @@ type Conn struct {
 	logger Logger
 }
 
-// connOption represents a connection option.
-type connOption func(c *Conn)
+// ConnOption allows multiple connection options to be passed to Connect
+type ConnOption func(c *Conn)
 
 type request struct {
 	xid        int32
@@ -156,7 +156,7 @@ func ConnectWithDialer(servers []string, sessionTimeout time.Duration, dialer Di
 // the session timeout it's possible to reestablish a connection to a different
 // server and keep the same session. This is means any ephemeral nodes and
 // watches are maintained.
-func Connect(servers []string, sessionTimeout time.Duration, options ...connOption) (*Conn, <-chan Event, error) {
+func Connect(servers []string, sessionTimeout time.Duration, options ...ConnOption) (*Conn, <-chan Event, error) {
 	if len(servers) == 0 {
 		return nil, nil, errors.New("zk: server list must not be empty")
 	}
@@ -214,21 +214,21 @@ func Connect(servers []string, sessionTimeout time.Duration, options ...connOpti
 }
 
 // WithDialer returns a connection option specifying a non-default Dialer.
-func WithDialer(dialer Dialer) connOption {
+func WithDialer(dialer Dialer) ConnOption {
 	return func(c *Conn) {
 		c.dialer = dialer
 	}
 }
 
 // WithHostProvider returns a connection option specifying a non-default HostProvider.
-func WithHostProvider(hostProvider HostProvider) connOption {
+func WithHostProvider(hostProvider HostProvider) ConnOption {
 	return func(c *Conn) {
 		c.hostProvider = hostProvider
 	}
 }
 
 // WithLogger returns a connection option specifying a non-default logger
-func WithLogger(logger Logger) connOption {
+func WithLogger(logger Logger) ConnOption {
 	return func(c *Conn) {
 		c.logger = logger
 	}
@@ -236,7 +236,7 @@ func WithLogger(logger Logger) connOption {
 
 // WithConnectTimeout returns a connection option specifying a non-default
 // timeout on establishing a connection to a ZooKeeper server
-func WithConnectTimeout(connectTimeout time.Duration) connOption {
+func WithConnectTimeout(connectTimeout time.Duration) ConnOption {
 	return func(c *Conn) {
 		c.connectTimeout = connectTimeout
 	}
